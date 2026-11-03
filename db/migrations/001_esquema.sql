@@ -1,0 +1,1 @@
+-- Placeholder de la migración del esquema.

@@ -1,0 +1,1 @@
+-- Placeholder de consultas SELECT.

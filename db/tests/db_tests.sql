@@ -1,0 +1,1 @@
+-- Placeholder para pruebas de base de datos.
