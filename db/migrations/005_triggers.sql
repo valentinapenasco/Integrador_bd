@@ -51,7 +51,6 @@ BEGIN
      WHERE id_sala = v_id_sala
        AND cod_vino = NEW.cod_vino;
 
-    PERFORM fn_total_comprobante(NEW.nro_comprobante);
     RETURN NEW;
 END;
 $$;
