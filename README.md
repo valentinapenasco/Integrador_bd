@@ -2,8 +2,6 @@
 
 Sistema de gestión y distribución para la empresa vitivinícola ficticia 'Bodegas del Atuel'. Trabajo Práctico Integrador - Bases de Datos (UTN FRSR 2026)
 
-=======
-Sistema de gestión y distribución para la empresa vitivinícola ficticia 'Bodegas del Atuel'. Trabajo Práctico Integrador - Bases de Datos (UTN FRSR 2026)
 
 # Integrantes:
 1. Albarracín Valentina
