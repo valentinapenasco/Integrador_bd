@@ -1,0 +1,378 @@
+﻿Timing is on.
+=== BEFORE: consultas sin indices H4 ===
+docker : NOTICE:  index "idx_comprobante_cliente" does not exist, skipping
+En línea: 2 Carácter: 49
++ ... tapa4.sql | docker exec -i bodegas_db psql -U postgres -d bodegas_atu ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (NOTICE:  index ...exist, skipping:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+NOTICE:  index "idx_renglon_comprobante_vino" does not exist, skipping
+DROP INDEX
+Time: 0.328 ms
+DROP INDEX
+Time: 0.232 ms
+NOTICE:  index "idx_comprobante_fecha_sala" does not exist, skipping
+NOTICE:  index "idx_transferencia_pendiente" does not exist, skipping
+DROP INDEX
+Time: 0.250 ms
+DROP INDEX
+Time: 0.131 ms
+DROP INDEX
+Time: 0.228 ms
+DROP INDEX
+Time: 0.155 ms
+NOTICE:  index "idx_comprobante_fecha_brin" does not exist, skipping
+NOTICE:  index "idx_bodega_razon_social_lower" does not exist, skipping
+ANALYZE
+Time: 433.034 ms
+--- Q1: comprobantes de un cliente ---
+                                               QUERY PLAN                                               
+--------------------------------------------------------------------------------------------------------
+ Seq Scan on comprobante  (cost=0.00..359.00 rows=1 width=16) (actual time=0.005..1.166 rows=1 loops=1)
+   Filter: (id_cliente = 1)
+   Rows Removed by Filter: 19999
+   Buffers: shared hit=109
+ Planning:
+   Buffers: shared hit=20
+ Planning Time: 0.125 ms
+ Execution Time: 1.193 ms
+(8 rows)
+
+Time: 1.676 ms
+--- Q2: renglones de un vino ---
+                                                       QUERY PLAN                                                        
+-------------------------------------------------------------------------------------------------------------------------
+ Seq Scan on renglon_comprobante  (cost=0.00..2265.00 rows=19996 width=17) (actual time=0.004..6.195 rows=20000 loops=1)
+   Filter: (cod_vino = 1)
+   Rows Removed by Filter: 100000
+   Buffers: shared hit=765
+ Planning:
+   Buffers: shared hit=15
+ Planning Time: 0.082 ms
+ Execution Time: 7.210 ms
+(8 rows)
+
+Time: 7.540 ms
+--- Q3: comprobantes de una sala y fecha ---
+                                                 QUERY PLAN                                                 
+------------------------------------------------------------------------------------------------------------
+ Seq Scan on comprobante  (cost=0.00..459.00 rows=667 width=16) (actual time=0.005..1.101 rows=667 loops=1)
+   Filter: ((id_sala = 1) AND (fecha = CURRENT_DATE))
+   Rows Removed by Filter: 19333
+   Buffers: shared hit=109
+ Planning:
+   Buffers: shared hit=6
+ Planning Time: 0.070 ms
+ Execution Time: 1.144 ms
+(8 rows)
+
+Time: 1.462 ms
+--- S9: ficha de un vino ---
+                                                                  QUERY PLAN                                                                  
+----------------------------------------------------------------------------------------------------------------------------------------------
+ GroupAggregate  (cost=0.23..2571.11 rows=1 width=29) (actual time=11.463..11.466 rows=1 loops=1)
+   Group Key: v.cod_vino
+   Buffers: shared hit=771
+   InitPlan 2 (returns $1)
+     ->  Result  (cost=0.22..0.23 rows=1 width=4) (actual time=0.010..0.012 rows=1 loops=1)
+           Buffers: shared hit=2
+           InitPlan 1 (returns $0)
+             ->  Limit  (cost=0.14..0.22 rows=1 width=4) (actual time=0.008..0.010 rows=1 loops=1)
+                   Buffers: shared hit=2
+                   ->  Index Only Scan using vino_pkey on vino  (cost=0.14..10.77 rows=150 width=4) (actual time=0.007..0.008 rows=1 loops=1)
+                         Index Cond: (cod_vino IS NOT NULL)
+                         Heap Fetches: 0
+                         Buffers: shared hit=2
+   ->  Nested Loop  (cost=0.00..2470.88 rows=20000 width=25) (actual time=0.019..9.756 rows=20000 loops=1)
+         Buffers: shared hit=771
+         ->  Seq Scan on vino v  (cost=0.00..5.88 rows=1 width=21) (actual time=0.015..0.025 rows=1 loops=1)
+               Filter: (cod_vino = $1)
+               Rows Removed by Filter: 149
+               Buffers: shared hit=6
+         ->  Seq Scan on renglon_comprobante rc  (cost=0.00..2265.00 rows=20000 width=8) (actual time=0.002..7.225 rows=20000 loops=1)
+               Filter: (cod_vino = $1)
+               Rows Removed by Filter: 100000
+               Buffers: shared hit=765
+ Planning:
+   Buffers: shared hit=36
+ Planning Time: 0.206 ms
+ Execution Time: 11.499 ms
+(27 rows)
+
+Time: 12.220 ms
+--- S1: ventas por vino ---
+                                                                  QUERY PLAN                                                                   
+-----------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=2565.14..2565.15 rows=6 width=12) (actual time=26.291..26.295 rows=6 loops=1)
+   Buffers: shared hit=765
+   ->  Sort  (cost=2565.14..2565.15 rows=6 width=12) (actual time=26.290..26.291 rows=6 loops=1)
+         Sort Key: (sum(cantidad)) DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=765
+         ->  HashAggregate  (cost=2565.00..2565.06 rows=6 width=12) (actual time=26.280..26.283 rows=6 loops=1)
+               Group Key: cod_vino
+               Batches: 1  Memory Usage: 24kB
+               Buffers: shared hit=765
+               ->  Seq Scan on renglon_comprobante rc  (cost=0.00..1965.00 rows=120000 width=8) (actual time=0.003..8.253 rows=120000 loops=1)
+                     Buffers: shared hit=765
+ Planning:
+   Buffers: shared hit=10
+ Planning Time: 0.086 ms
+ Execution Time: 26.319 ms
+(16 rows)
+
+Time: 27.132 ms
+--- S3: ventas por sala y periodo ---
+                                                         QUERY PLAN                                                          
+-----------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=560.04..560.11 rows=30 width=12) (actual time=7.091..7.093 rows=30 loops=1)
+   Sort Key: (count(*)) DESC
+   Sort Method: quicksort  Memory: 26kB
+   Buffers: shared hit=109
+   ->  HashAggregate  (cost=559.00..559.30 rows=30 width=12) (actual time=7.077..7.081 rows=30 loops=1)
+         Group Key: id_sala
+         Batches: 1  Memory Usage: 24kB
+         Buffers: shared hit=109
+         ->  Seq Scan on comprobante c  (cost=0.00..459.00 rows=20000 width=4) (actual time=0.005..4.040 rows=20000 loops=1)
+               Filter: (fecha >= (CURRENT_DATE - '90 days'::interval))
+               Buffers: shared hit=109
+ Planning:
+   Buffers: shared hit=3
+ Planning Time: 0.081 ms
+ Execution Time: 7.117 ms
+(15 rows)
+
+Time: 7.805 ms
+--- S5: transferencias pendientes ---
+                                                      QUERY PLAN                                                       
+-----------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=12.79..12.86 rows=30 width=12) (actual time=0.175..0.178 rows=30 loops=1)
+   Sort Key: (count(*))
+   Sort Method: quicksort  Memory: 26kB
+   Buffers: shared hit=3
+   ->  HashAggregate  (cost=11.75..12.05 rows=30 width=12) (actual time=0.160..0.165 rows=30 loops=1)
+         Group Key: id_sala_solicitante
+         Batches: 1  Memory Usage: 24kB
+         Buffers: shared hit=3
+         ->  Seq Scan on transferencia  (cost=0.00..9.25 rows=500 width=4) (actual time=0.005..0.064 rows=500 loops=1)
+               Filter: (estado <> 'procesado'::estado_documento)
+               Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=9
+ Planning Time: 0.100 ms
+ Execution Time: 0.200 ms
+(15 rows)
+
+Time: 0.845 ms
+=== AFTER: consultas con indices H4 ===
+CREATE INDEX
+Time: 16.274 ms
+CREATE INDEX
+Time: 39.821 ms
+CREATE INDEX
+Time: 19.405 ms
+CREATE INDEX
+Time: 4.273 ms
+CREATE INDEX
+Time: 3.909 ms
+CREATE INDEX
+Time: 4.517 ms
+ANALYZE
+Time: 406.730 ms
+--- Q1: comprobantes de un cliente ---
+                                                              QUERY PLAN                                                              
+--------------------------------------------------------------------------------------------------------------------------------------
+ Index Scan using idx_comprobante_cliente on comprobante  (cost=0.29..8.30 rows=1 width=16) (actual time=0.028..0.029 rows=1 loops=1)
+   Index Cond: (id_cliente = 1)
+   Buffers: shared hit=1 read=2
+ Planning:
+   Buffers: shared hit=20 read=2
+ Planning Time: 0.174 ms
+ Execution Time: 0.042 ms
+(7 rows)
+
+Time: 0.454 ms
+--- Q2: renglones de un vino ---
+                                                                         QUERY PLAN                                                                          
+-------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Index Scan using idx_renglon_comprobante_vino on renglon_comprobante  (cost=0.29..556.11 rows=20104 width=17) (actual time=0.026..2.508 rows=20000 loops=1)
+   Index Cond: (cod_vino = 1)
+   Buffers: shared hit=128 read=18
+ Planning:
+   Buffers: shared hit=14 read=1
+ Planning Time: 0.108 ms
+ Execution Time: 3.498 ms
+(7 rows)
+
+Time: 3.803 ms
+--- Q3: comprobantes de una sala y fecha ---
+                                                               QUERY PLAN                                                               
+----------------------------------------------------------------------------------------------------------------------------------------
+ Bitmap Heap Scan on comprobante  (cost=11.13..131.80 rows=667 width=16) (actual time=0.066..0.235 rows=667 loops=1)
+   Recheck Cond: ((fecha = CURRENT_DATE) AND (id_sala = 1))
+   Heap Blocks: exact=109
+   Buffers: shared hit=109 read=2
+   ->  Bitmap Index Scan on idx_comprobante_fecha_sala  (cost=0.00..10.96 rows=667 width=0) (actual time=0.049..0.050 rows=667 loops=1)
+         Index Cond: ((fecha = CURRENT_DATE) AND (id_sala = 1))
+         Buffers: shared read=2
+ Planning:
+   Buffers: shared hit=1
+ Planning Time: 0.061 ms
+ Execution Time: 0.275 ms
+(11 rows)
+
+Time: 0.606 ms
+--- S9: ficha de un vino ---
+                                                                                QUERY PLAN                                                                                 
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ GroupAggregate  (cost=0.52..859.40 rows=1 width=29) (actual time=6.621..6.623 rows=1 loops=1)
+   Group Key: v.cod_vino
+   Buffers: shared hit=152
+   InitPlan 2 (returns $1)
+     ->  Result  (cost=0.22..0.23 rows=1 width=4) (actual time=0.012..0.014 rows=1 loops=1)
+           Buffers: shared hit=2
+           InitPlan 1 (returns $0)
+             ->  Limit  (cost=0.14..0.22 rows=1 width=4) (actual time=0.010..0.011 rows=1 loops=1)
+                   Buffers: shared hit=2
+                   ->  Index Only Scan using vino_pkey on vino  (cost=0.14..10.77 rows=150 width=4) (actual time=0.009..0.010 rows=1 loops=1)
+                         Index Cond: (cod_vino IS NOT NULL)
+                         Heap Fetches: 0
+                         Buffers: shared hit=2
+   ->  Nested Loop  (cost=0.29..759.17 rows=20000 width=25) (actual time=0.030..5.006 rows=20000 loops=1)
+         Buffers: shared hit=152
+         ->  Seq Scan on vino v  (cost=0.00..5.88 rows=1 width=21) (actual time=0.020..0.030 rows=1 loops=1)
+               Filter: (cod_vino = $1)
+               Rows Removed by Filter: 149
+               Buffers: shared hit=6
+         ->  Index Scan using idx_renglon_comprobante_vino on renglon_comprobante rc  (cost=0.29..553.29 rows=20000 width=8) (actual time=0.008..2.486 rows=20000 loops=1)
+               Index Cond: (cod_vino = $1)
+               Buffers: shared hit=146
+ Planning:
+   Buffers: shared hit=14
+ Planning Time: 0.244 ms
+ Execution Time: 6.658 ms
+(26 rows)
+
+Time: 7.295 ms
+--- S1: ventas por vino ---
+                                                                  QUERY PLAN                                                                   
+-----------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=2565.14..2565.15 rows=6 width=12) (actual time=26.210..26.213 rows=6 loops=1)
+   Buffers: shared hit=765
+   ->  Sort  (cost=2565.14..2565.15 rows=6 width=12) (actual time=26.209..26.210 rows=6 loops=1)
+         Sort Key: (sum(cantidad)) DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=765
+         ->  HashAggregate  (cost=2565.00..2565.06 rows=6 width=12) (actual time=26.201..26.203 rows=6 loops=1)
+               Group Key: cod_vino
+               Batches: 1  Memory Usage: 24kB
+               Buffers: shared hit=765
+               ->  Seq Scan on renglon_comprobante rc  (cost=0.00..1965.00 rows=120000 width=8) (actual time=0.005..8.388 rows=120000 loops=1)
+                     Buffers: shared hit=765
+ Planning Time: 0.077 ms
+ Execution Time: 26.237 ms
+(14 rows)
+
+Time: 26.680 ms
+--- S3: ventas por sala y periodo ---
+                                                                             QUERY PLAN                                                                              
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=531.33..531.40 rows=30 width=12) (actual time=4.711..4.713 rows=30 loops=1)
+   Sort Key: (count(*)) DESC
+   Sort Method: quicksort  Memory: 26kB
+   Buffers: shared hit=6 read=17
+   ->  HashAggregate  (cost=530.29..530.59 rows=30 width=12) (actual time=4.697..4.702 rows=30 loops=1)
+         Group Key: id_sala
+         Batches: 1  Memory Usage: 24kB
+         Buffers: shared hit=6 read=17
+         ->  Index Only Scan using idx_comprobante_fecha_sala on comprobante c  (cost=0.29..430.29 rows=20000 width=4) (actual time=0.025..1.938 rows=20000 loops=1)
+               Index Cond: (fecha >= (CURRENT_DATE - '90 days'::interval))
+               Heap Fetches: 0
+               Buffers: shared hit=6 read=17
+ Planning:
+   Buffers: shared hit=7
+ Planning Time: 0.179 ms
+ Execution Time: 4.746 ms
+(16 rows)
+
+Time: 5.395 ms
+--- S5: transferencias pendientes ---
+                                                      QUERY PLAN                                                       
+-----------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=12.79..12.86 rows=30 width=12) (actual time=0.135..0.137 rows=30 loops=1)
+   Sort Key: (count(*))
+   Sort Method: quicksort  Memory: 26kB
+   Buffers: shared hit=3
+   ->  HashAggregate  (cost=11.75..12.05 rows=30 width=12) (actual time=0.124..0.128 rows=30 loops=1)
+         Group Key: id_sala_solicitante
+         Batches: 1  Memory Usage: 24kB
+         Buffers: shared hit=3
+         ->  Seq Scan on transferencia  (cost=0.00..9.25 rows=500 width=4) (actual time=0.007..0.050 rows=500 loops=1)
+               Filter: (estado <> 'procesado'::estado_documento)
+               Buffers: shared hit=3
+ Planning:
+   Buffers: shared hit=8 read=1
+ Planning Time: 0.162 ms
+ Execution Time: 0.158 ms
+(15 rows)
+
+Time: 0.593 ms
+=== COSTO DE ESCRITURA ===
+DROP TABLE
+Time: 0.251 ms
+NOTICE:  table "etapa4_medicion_escritura" does not exist, skipping
+CREATE TABLE AS
+Time: 3.013 ms
+CREATE INDEX
+Time: 1.784 ms
+CREATE INDEX
+Time: 1.645 ms
+--- Escritura con indices activos ---
+Timing is on.
+INSERT 0 1000
+Time: 1.983 ms
+TRUNCATE TABLE
+Time: 2.167 ms
+--- Escritura sin indices H4 ---
+DROP INDEX
+Time: 1.269 ms
+DROP INDEX
+Time: 1.218 ms
+INSERT 0 1000
+Time: 1.084 ms
+=== CASO DE BAJA SELECTIVIDAD ===
+                                                     QUERY PLAN                                                      
+---------------------------------------------------------------------------------------------------------------------
+ Aggregate  (cost=409.00..409.01 rows=1 width=8) (actual time=4.870..4.872 rows=1 loops=1)
+   Buffers: shared hit=109
+   ->  Seq Scan on comprobante  (cost=0.00..359.00 rows=20000 width=0) (actual time=0.004..3.520 rows=20000 loops=1)
+         Filter: (fecha >= '2000-01-01'::date)
+         Buffers: shared hit=109
+ Planning:
+   Buffers: shared hit=7
+ Planning Time: 0.068 ms
+ Execution Time: 4.887 ms
+(9 rows)
+
+Time: 5.241 ms
+=== RESTAURAR INDICES H4 ===
+CREATE INDEX
+Time: 0.209 ms
+NOTICE:  relation "idx_comprobante_cliente" already exists, skipping
+CREATE INDEX
+Time: 0.288 ms
+CREATE INDEX
+Time: 0.163 ms
+NOTICE:  relation "idx_renglon_comprobante_vino" already exists, skipping
+NOTICE:  relation "idx_comprobante_fecha_sala" already exists, skipping
+CREATE INDEX
+Time: 0.264 ms
+NOTICE:  relation "idx_transferencia_pendiente" already exists, skipping
+CREATE INDEX
+Time: 0.273 ms
+CREATE INDEX
+Time: 0.231 ms
+=== FIN ===
+NOTICE:  relation "idx_comprobante_fecha_brin" already exists, skipping
+NOTICE:  relation "idx_bodega_razon_social_lower" already exists, skipping
