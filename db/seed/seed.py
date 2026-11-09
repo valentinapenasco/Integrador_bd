@@ -138,6 +138,7 @@ def generate_rows(fake: Faker, catalogs: dict[str, list[dict[str, str]]]):
             )
             for row in localities
         ],
+        "tipos_vino": [row["tipo"] for row in wine_types],
     }
 
     bodegas = [
@@ -302,7 +303,7 @@ def load() -> None:
             wine_rows = (
                 (
                     f"{rng.choice(['Reserva', 'Joven', 'Gran'])} {rng.choice(['Malbec', 'Blend', 'Chardonnay'])} {index}",
-                    rng.choice([row["tipo"] for row in wine_types]),
+                    rng.choice(catalog_data["tipos_vino"]),
                     rng.randint(2015, 2025),
                     rng.choice([375, 750, 1500]),
                     Decimal(str(rng.randint(5, 20))),
