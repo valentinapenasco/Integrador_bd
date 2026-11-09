@@ -1,11 +1,12 @@
-HITO 1: ESQUEMA FÍSICO
+-- HITO 1: ESQUEMA FÍSICO
 
 CREATE TYPE estado_documento AS ENUM ('en_confeccion', 'terminado', 'procesado');
 CREATE TYPE tipo_cepa AS ENUM ('tinta', 'blanca');
 CREATE TYPE tipo_vino AS ENUM ('tinto', 'blanco', 'rosado', 'espumante');
 CREATE TYPE tipo_cliente_enum AS ENUM ('socio', 'distribuidor', 'exportador');
 
-CREATE DOMAIN cuit_dom AS CHAR(11);
+CREATE DOMAIN cuit_dom AS CHAR(11)
+    CHECK (btrim(VALUE) ~ '^[0-9]{11}$');
 
 
 CREATE TABLE finca (
@@ -23,11 +24,11 @@ CREATE TABLE cepa (
 );
 
 CREATE TABLE parcela (
-    id_finca INT NOT NULL REFERENCES finca(id_finca),
+    id_finca INT NOT NULL REFERENCES finca(id_finca) ON DELETE CASCADE ON UPDATE CASCADE,
     nro_parcela INT NOT NULL,
     superficie NUMERIC(8,2) NOT NULL,
     anio_plantacion INT NOT NULL,
-    id_cepa INT NOT NULL REFERENCES cepa(id_cepa),
+    id_cepa INT NOT NULL REFERENCES cepa(id_cepa) ON DELETE RESTRICT ON UPDATE CASCADE,
     PRIMARY KEY (id_finca, nro_parcela)
 );
 
@@ -44,8 +45,9 @@ CREATE TABLE lote_uva (
     kilos NUMERIC(10,2) NOT NULL,
     id_finca INT NOT NULL,
     nro_parcela INT NOT NULL,
-    cuit_bodega cuit_dom NOT NULL REFERENCES bodega(cuit),
+    cuit_bodega cuit_dom NOT NULL REFERENCES bodega(cuit) ON DELETE RESTRICT ON UPDATE CASCADE,
     FOREIGN KEY (id_finca, nro_parcela) REFERENCES parcela(id_finca, nro_parcela)
+        ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 CREATE TABLE analisis_calidad (
@@ -54,7 +56,7 @@ CREATE TABLE analisis_calidad (
     brix NUMERIC(5,2) NOT NULL,
     ph NUMERIC(4,2) NOT NULL,
     acidez NUMERIC(5,2) NOT NULL,
-    nro_lote INT NOT NULL REFERENCES lote_uva(nro_lote)
+    nro_lote INT NOT NULL REFERENCES lote_uva(nro_lote) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 
@@ -67,12 +69,12 @@ CREATE TABLE vino (
     volumen_ml INT NOT NULL,
     graduacion NUMERIC(4,2) NOT NULL,
     precio NUMERIC(10,2) NOT NULL,
-    cuit_bodega cuit_dom NOT NULL REFERENCES bodega(cuit)
+    cuit_bodega cuit_dom NOT NULL REFERENCES bodega(cuit) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 CREATE TABLE composicion (
-    cod_vino INT NOT NULL REFERENCES vino(cod_vino),
-    id_cepa INT NOT NULL REFERENCES cepa(id_cepa),
+    cod_vino INT NOT NULL REFERENCES vino(cod_vino) ON DELETE CASCADE ON UPDATE CASCADE,
+    id_cepa INT NOT NULL REFERENCES cepa(id_cepa) ON DELETE RESTRICT ON UPDATE CASCADE,
     porcentaje NUMERIC(5,2) NOT NULL,
     PRIMARY KEY (cod_vino, id_cepa)
 );
@@ -84,14 +86,14 @@ CREATE TABLE maridaje (
 );
 
 CREATE TABLE vino_maridaje (
-    cod_vino INT NOT NULL REFERENCES vino(cod_vino),
-    id_maridaje INT NOT NULL REFERENCES maridaje(id_maridaje),
+    cod_vino INT NOT NULL REFERENCES vino(cod_vino) ON DELETE CASCADE ON UPDATE CASCADE,
+    id_maridaje INT NOT NULL REFERENCES maridaje(id_maridaje) ON DELETE CASCADE ON UPDATE CASCADE,
     PRIMARY KEY (cod_vino, id_maridaje)
 );
 
 CREATE TABLE auditoria_precio (
     id_auditoria SERIAL PRIMARY KEY,
-    cod_vino INT NOT NULL REFERENCES vino(cod_vino),
+    cod_vino INT NOT NULL REFERENCES vino(cod_vino) ON DELETE RESTRICT ON UPDATE CASCADE,
     precio_anterior NUMERIC(10,2) NOT NULL,
     precio_nuevo NUMERIC(10,2) NOT NULL,
     fecha_hora TIMESTAMP NOT NULL,
@@ -112,6 +114,7 @@ CREATE TABLE sala_venta (
     numero VARCHAR(20) NOT NULL,
     dia_cierre VARCHAR(20) NOT NULL,
     codigo_postal VARCHAR(20) NOT NULL REFERENCES localidad(codigo_postal)
+        ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 CREATE TABLE empleado (
@@ -119,17 +122,17 @@ CREATE TABLE empleado (
     nombre VARCHAR(150) NOT NULL,
     fecha_ingreso DATE NOT NULL,
     salario NUMERIC(12,2) NOT NULL,
-    id_sala INT NOT NULL REFERENCES sala_venta(id_sala)
+    id_sala INT NOT NULL REFERENCES sala_venta(id_sala) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 CREATE TABLE stock_deposito (
-    cod_vino INT PRIMARY KEY REFERENCES vino(cod_vino),
+    cod_vino INT PRIMARY KEY REFERENCES vino(cod_vino) ON DELETE RESTRICT ON UPDATE CASCADE,
     cantidad INT NOT NULL
 );
 
 CREATE TABLE stock_sala (
-    id_sala INT NOT NULL REFERENCES sala_venta(id_sala),
-    cod_vino INT NOT NULL REFERENCES vino(cod_vino),
+    id_sala INT NOT NULL REFERENCES sala_venta(id_sala) ON DELETE RESTRICT ON UPDATE CASCADE,
+    cod_vino INT NOT NULL REFERENCES vino(cod_vino) ON DELETE RESTRICT ON UPDATE CASCADE,
     cantidad INT NOT NULL,
     PRIMARY KEY (id_sala, cod_vino)
 );
@@ -144,22 +147,26 @@ CREATE TABLE transportista (
 );
 
 CREATE TABLE transportista_localidad (
-    cod_transportista INT NOT NULL REFERENCES transportista(cod_transportista),
-    codigo_postal VARCHAR(20) NOT NULL REFERENCES localidad(codigo_postal),
+    cod_transportista INT NOT NULL REFERENCES transportista(cod_transportista)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    codigo_postal VARCHAR(20) NOT NULL REFERENCES localidad(codigo_postal)
+        ON DELETE CASCADE ON UPDATE CASCADE,
     PRIMARY KEY (cod_transportista, codigo_postal)
 );
 
 CREATE TABLE ingreso (
     cod_ingreso SERIAL PRIMARY KEY,
-    fecha DATE NOT NULL,
-    estado estado_documento NOT NULL,
-    cod_transportista INT NOT NULL REFERENCES transportista(cod_transportista),
+    fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+    estado estado_documento NOT NULL DEFAULT 'en_confeccion',
+    cod_transportista INT NOT NULL REFERENCES transportista(cod_transportista)
+        ON DELETE RESTRICT ON UPDATE CASCADE,
     cuit_bodega cuit_dom NOT NULL REFERENCES bodega(cuit)
+        ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 CREATE TABLE renglon_ingreso (
-    cod_ingreso INT NOT NULL REFERENCES ingreso(cod_ingreso),
-    cod_vino INT NOT NULL REFERENCES vino(cod_vino),
+    cod_ingreso INT NOT NULL REFERENCES ingreso(cod_ingreso) ON DELETE CASCADE ON UPDATE CASCADE,
+    cod_vino INT NOT NULL REFERENCES vino(cod_vino) ON DELETE RESTRICT ON UPDATE CASCADE,
     cantidad INT NOT NULL,
     PRIMARY KEY (cod_ingreso, cod_vino)
 );
@@ -167,13 +174,15 @@ CREATE TABLE renglon_ingreso (
 CREATE TABLE transferencia (
     nro_transferencia SERIAL PRIMARY KEY,
     fecha_confeccion DATE NOT NULL,
-    estado estado_documento NOT NULL,
+    estado estado_documento NOT NULL DEFAULT 'en_confeccion',
     id_sala_solicitante INT NOT NULL REFERENCES sala_venta(id_sala)
+        ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 CREATE TABLE renglon_transferencia (
-    nro_transferencia INT NOT NULL REFERENCES transferencia(nro_transferencia),
-    cod_vino INT NOT NULL REFERENCES vino(cod_vino),
+    nro_transferencia INT NOT NULL REFERENCES transferencia(nro_transferencia)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    cod_vino INT NOT NULL REFERENCES vino(cod_vino) ON DELETE RESTRICT ON UPDATE CASCADE,
     cantidad INT NOT NULL,
     PRIMARY KEY (nro_transferencia, cod_vino)
 );
@@ -187,18 +196,18 @@ CREATE TABLE cliente (
     nro_doc VARCHAR(50) NOT NULL,
     direccion VARCHAR(200) NOT NULL,
     localidad VARCHAR(100) NOT NULL,
-    fecha_alta DATE NOT NULL,
+    fecha_alta DATE NOT NULL DEFAULT CURRENT_DATE,
     tipo_cliente tipo_cliente_enum NOT NULL
 );
 
 CREATE TABLE distribuidor (
-    id_cliente INT PRIMARY KEY REFERENCES cliente(id_cliente),
+    id_cliente INT PRIMARY KEY REFERENCES cliente(id_cliente) ON DELETE CASCADE ON UPDATE CASCADE,
     zona_cobertura VARCHAR(150) NOT NULL,
     nro_habilitacion VARCHAR(50) NOT NULL
 );
 
 CREATE TABLE exportador (
-    id_cliente INT PRIMARY KEY REFERENCES cliente(id_cliente),
+    id_cliente INT PRIMARY KEY REFERENCES cliente(id_cliente) ON DELETE CASCADE ON UPDATE CASCADE,
     pais_destino VARCHAR(100) NOT NULL
 );
 
@@ -207,18 +216,20 @@ CREATE TABLE permiso_exportacion (
     fecha_emision DATE NOT NULL,
     fecha_vencimiento DATE NOT NULL,
     id_cliente_exportador INT NOT NULL REFERENCES exportador(id_cliente)
+        ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 CREATE TABLE comprobante (
     nro_comprobante SERIAL PRIMARY KEY,
-    fecha DATE NOT NULL,
-    id_cliente INT NOT NULL REFERENCES cliente(id_cliente),
-    id_sala INT NOT NULL REFERENCES sala_venta(id_sala)
+    fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+    id_cliente INT NOT NULL REFERENCES cliente(id_cliente) ON DELETE RESTRICT ON UPDATE CASCADE,
+    id_sala INT NOT NULL REFERENCES sala_venta(id_sala) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
 CREATE TABLE renglon_comprobante (
-    nro_comprobante INT NOT NULL REFERENCES comprobante(nro_comprobante),
-    cod_vino INT NOT NULL REFERENCES vino(cod_vino),
+    nro_comprobante INT NOT NULL REFERENCES comprobante(nro_comprobante)
+        ON DELETE CASCADE ON UPDATE CASCADE,
+    cod_vino INT NOT NULL REFERENCES vino(cod_vino) ON DELETE RESTRICT ON UPDATE CASCADE,
     cantidad INT NOT NULL,
     precio_unitario NUMERIC(10,2) NOT NULL,
     PRIMARY KEY (nro_comprobante, cod_vino)
