@@ -21,3 +21,9 @@ Sistema de gestión y distribución para la empresa vitivinícola ficticia 'Bode
 - Semilla fija para que sea reproducible
 - Modelado draw.io, dbdiagram.io, pgModeler u otra herramienta
 - Entregar imagen/PDF y el archivo fuente
+
+## API local (Etapa 6)
+
+La API FastAPI/psycopg, sus variables de entorno, documentación y pruebas se
+describen en [docs/H6_api.md](docs/H6_api.md). No ejecutar el seed para iniciar
+la API.

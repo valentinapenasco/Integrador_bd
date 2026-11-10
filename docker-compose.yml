@@ -12,6 +12,51 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d bodegas_atuel"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build:
+      context: ./api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: bodegas_atuel
+      DB_USER: bodegas_api
+      DB_PASSWORD: ${DB_PASSWORD:-}
+      DB_POOL_MAX_SIZE: ${DB_POOL_MAX_SIZE:-10}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080}
+    ports:
+      - "${API_PORT:-8000}:8000"
+
+  db-test:
+    image: postgres:15
+    profiles: ["test"]
+    environment:
+      POSTGRES_USER: ${TEST_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${TEST_POSTGRES_PASSWORD:-local_test_only_password}
+      POSTGRES_DB: ${TEST_POSTGRES_DB:-bodegas_atuel_test}
+    ports:
+      - "${TEST_POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - db_test_data:/var/lib/postgresql/data
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${TEST_POSTGRES_USER:-postgres} -d ${TEST_POSTGRES_DB:-bodegas_atuel_test}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
 
 volumes:
   db_data:
+  db_test_data:
