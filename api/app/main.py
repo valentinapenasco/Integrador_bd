@@ -65,6 +65,22 @@ def create_app(pool: ConnectionPool | None = None) -> FastAPI:
         dao.check_database(connection)
         return {"estado": "ok"}
 
+    @app.get("/cepas", tags=["Catalogos"])
+    def list_grape_varieties(connection: ConnectionDependency) -> list[Any]:
+        return dao.list_grape_varieties(connection)
+
+    @app.get("/maridajes", tags=["Catalogos"])
+    def list_pairings(connection: ConnectionDependency) -> list[Any]:
+        return dao.list_pairings(connection)
+
+    @app.get("/bodegas", tags=["Catalogos"])
+    def list_wineries(connection: ConnectionDependency) -> list[Any]:
+        return dao.list_wineries(connection)
+
+    @app.get("/salas", tags=["Catalogos"])
+    def list_sales_rooms(connection: ConnectionDependency) -> list[Any]:
+        return dao.list_sales_rooms(connection)
+
     @app.get("/vinos", tags=["Vinos"])
     def list_wines(
         connection: ConnectionDependency,

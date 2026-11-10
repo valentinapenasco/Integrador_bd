@@ -18,22 +18,55 @@ services:
       timeout: 5s
       retries: 12
 
+  db-bootstrap:
+    image: postgres:15
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: postgres
+      DB_API_PASSWORD: ${DB_PASSWORD:-postgres}
+    volumes:
+      - ./api/sql:/scripts:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        psql -h db -U postgres -d bodegas_atuel
+        -c "ALTER ROLE bodegas_api PASSWORD '$${DB_API_PASSWORD}';"
+        && psql -h db -U postgres -d bodegas_atuel
+        -f /scripts/enable_price_audit.sql
+
   api:
     build:
       context: ./api
     depends_on:
       db:
         condition: service_healthy
+      db-bootstrap:
+        condition: service_completed_successfully
     environment:
       DB_HOST: db
       DB_PORT: 5432
       DB_NAME: bodegas_atuel
       DB_USER: bodegas_api
-      DB_PASSWORD: ${DB_PASSWORD:-}
+      DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      DB_SSLMODE: ${DB_SSLMODE:-prefer}
+      DB_SSLROOTCERT: ${DB_SSLROOTCERT:-}
       DB_POOL_MAX_SIZE: ${DB_POOL_MAX_SIZE:-10}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080}
     ports:
       - "${API_PORT:-8000}:8000"
+
+  front:
+    build:
+      context: ./front
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "${FRONT_PORT:-8080}:80"
 
   db-test:
     image: postgres:15

@@ -22,6 +22,12 @@ def create_pool() -> ConnectionPool:
             "dbname": os.getenv("DB_NAME", "bodegas_atuel"),
             "user": os.getenv("DB_USER", "bodegas_api"),
             "password": password,
+            "sslmode": os.getenv("DB_SSLMODE", "prefer"),
+            **(
+                {"sslrootcert": os.environ["DB_SSLROOTCERT"]}
+                if os.getenv("DB_SSLROOTCERT")
+                else {}
+            ),
             "row_factory": dict_row,
         },
         min_size=1,

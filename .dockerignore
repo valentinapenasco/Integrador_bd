@@ -1,0 +1,12 @@
+# Local-only reference material must never enter a Docker build context.
+ejemplo/
+.git/
+.env
+.env.*
+!.env.example
+*.dump
+*.sql.gz
+node_modules/
+front/dist/
+__pycache__/
+.pytest_cache/

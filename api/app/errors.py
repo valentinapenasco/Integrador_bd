@@ -10,7 +10,9 @@ def postgres_error_response(sqlstate: str | None, message: str) -> tuple[int, st
         return 409, "Conflicto: el registro ya existe."
     if sqlstate == "23503":
         return 409, "Conflicto: el registro relacionado no existe o tiene dependencias."
-    if sqlstate in {"23514", "23502"}:
+    if sqlstate == "23514":
+        return 422, message
+    if sqlstate == "23502":
         return 422, "Los datos no cumplen las reglas de la base de datos."
     if sqlstate == "P0001":
         return 409, message

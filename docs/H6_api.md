@@ -24,15 +24,24 @@ cambien el precio fallarán por permisos.
 
 Para ejecución local fuera de Docker, `DB_HOST` debe ser `localhost`. En
 Compose, el servicio API reemplaza el host por `db`.
+`DB_SSLMODE` controla el cifrado de PostgreSQL; en la nube debe configurarse
+como `require` (o el valor exigido por el proveedor). `DB_SSLROOTCERT` es
+opcional cuando el proveedor entrega un certificado CA.
 
 ## Iniciar con Docker Compose
 
-Una vez configurado el acceso del rol, copie `.env.example` a `.env` y ejecute
+Copie `.env.example` a `.env` y ejecute
 desde la raíz del repositorio:
 
 ```powershell
 docker compose up
 ```
+
+En Compose, el servicio `db-bootstrap` espera a que PostgreSQL esté saludable,
+asigna `DB_PASSWORD` al rol `bodegas_api` y habilita la función segura de
+auditoría de precios. Esto también corrige volúmenes existentes sin borrar
+datos. Para un entorno no local, cambie `DB_PASSWORD` mediante un secreto y no
+use la contraseña de ejemplo.
 
 La API queda disponible en `http://localhost:8000`; Swagger UI está en
 `http://localhost:8000/docs`. Si necesita reconstruir explícitamente la imagen,
@@ -94,6 +103,10 @@ La aplicación lee variables del proceso; no carga `.env` automáticamente.
 | GET | `/reportes/vinos-sin-stock?id_sala=1` | Vinos sin stock local y con stock central |
 | GET | `/reportes/transportista-activo` | Transportistas con mayor actividad del último mes |
 | GET | `/reportes/trazabilidad/{cod_vino}` | Ingresos, transferencias, ventas y auditoría de precio |
+| GET | `/cepas` | Catálogo de cepas para formularios del frontend |
+| GET | `/maridajes` | Catálogo de maridajes para formularios del frontend |
+| GET | `/bodegas` | Catálogo de bodegas para formularios del frontend |
+| GET | `/salas` | Catálogo de salas de venta para formularios y reportes |
 
 `/reportes/trazabilidad/{cod_vino}` no atribuye lotes de uva a un vino: el
 esquema existente no contiene esa relación. No se modificó el modelo anterior.

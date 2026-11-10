@@ -62,6 +62,10 @@ def test_openapi_lists_required_resource_routes():
 
     required = {
         "/salud",
+        "/cepas",
+        "/maridajes",
+        "/bodegas",
+        "/salas",
         "/vinos",
         "/vinos/{cod_vino}",
         "/clientes",
@@ -134,7 +138,7 @@ def test_foreign_key_violation_maps_to_conflict():
 def test_check_violation_maps_to_unprocessable_entity():
     assert postgres_error_response("23514", "invalid price") == (
         422,
-        "Los datos no cumplen las reglas de la base de datos.",
+        "invalid price",
     )
 
 

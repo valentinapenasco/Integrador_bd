@@ -151,6 +151,11 @@ activemq-data/
 
 # Environments
 .env
+.env.*
+!.env.example
+ejemplo/
+*.dump
+*.sql.gz
 .envrc
 .venv
 env/

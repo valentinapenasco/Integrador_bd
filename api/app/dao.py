@@ -15,6 +15,40 @@ def check_database(connection: Connection) -> dict[str, int]:
     return _one(connection, "SELECT 1 AS ok")
 
 
+def list_grape_varieties(connection: Connection) -> list[Any]:
+    return _all(
+        connection,
+        "SELECT id_cepa, nombre, tipo FROM cepa ORDER BY nombre, id_cepa",
+    )
+
+
+def list_pairings(connection: Connection) -> list[Any]:
+    return _all(
+        connection,
+        "SELECT id_maridaje, nombre, temp_servicio FROM maridaje ORDER BY nombre, id_maridaje",
+    )
+
+
+def list_wineries(connection: Connection) -> list[Any]:
+    return _all(
+        connection,
+        "SELECT cuit, razon_social, domicilio FROM bodega ORDER BY razon_social, cuit",
+    )
+
+
+def list_sales_rooms(connection: Connection) -> list[Any]:
+    return _all(
+        connection,
+        """
+        SELECT s.id_sala, s.calle, s.numero, s.dia_cierre,
+               s.codigo_postal, l.nombre AS localidad
+        FROM sala_venta AS s
+        JOIN localidad AS l USING (codigo_postal)
+        ORDER BY s.id_sala
+        """,
+    )
+
+
 def list_wines(
     connection: Connection,
     *,
@@ -137,13 +171,14 @@ def insert_wine(connection: Connection, wine: Any) -> Any:
 def insert_wine_composition(
     connection: Connection, cod_vino: int, composition: list[Any]
 ) -> None:
-    connection.executemany(
-        """
-        INSERT INTO composicion (cod_vino, id_cepa, porcentaje)
-        VALUES (%s, %s, %s)
-        """,
-        [(cod_vino, item.id_cepa, item.porcentaje) for item in composition],
-    )
+    for item in composition:
+        connection.execute(
+            """
+            INSERT INTO composicion (cod_vino, id_cepa, porcentaje)
+            VALUES (%s, %s, %s)
+            """,
+            (cod_vino, item.id_cepa, item.porcentaje),
+        )
 
 
 def replace_wine_composition(
@@ -158,13 +193,14 @@ def replace_wine_pairings(
 ) -> None:
     connection.execute("DELETE FROM vino_maridaje WHERE cod_vino = %s", (cod_vino,))
     if maridajes:
-        connection.executemany(
-            """
-            INSERT INTO vino_maridaje (cod_vino, id_maridaje)
-            VALUES (%s, %s)
-            """,
-            [(cod_vino, id_maridaje) for id_maridaje in maridajes],
-        )
+        for id_maridaje in maridajes:
+            connection.execute(
+                """
+                INSERT INTO vino_maridaje (cod_vino, id_maridaje)
+                VALUES (%s, %s)
+                """,
+                (cod_vino, id_maridaje),
+            )
 
 
 def update_wine(connection: Connection, cod_vino: int, wine: Any) -> Any:
